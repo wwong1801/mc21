@@ -10,6 +10,13 @@
   <main class="table" aria-live="polite">
     <header class="bar">
       <h1>🃏 21点 · Player Turn</h1>
+
+      <!-- Add inside <header class="bar"> ... -->
+      <div class="bet">
+        <label for="betInput">下注</label>
+        <input id="betInput" type="number" min="1" step="1" value="100" style="width:90px" />
+      </div>
+      
       <div class="controls">
         <button id="newBtn" class="primary" title="N">新一局 (N)</button>
         <button id="hitBtn" title="H">要牌 (H)</button>
