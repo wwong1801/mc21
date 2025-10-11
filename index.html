@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>21点 · Player Turn (v0.2.0)</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="table" aria-live="polite">
+    <header class="bar">
+      <h1>🃏 21点 · Player Turn</h1>
+      <div class="controls">
+        <button id="newBtn" class="primary" title="N">新一局 (N)</button>
+        <button id="hitBtn" title="H">要牌 (H)</button>
+        <button id="standBtn" class="danger" title="S">不要 (S)</button>
+      </div>
+    </header>
+
+    <section class="row">
+      <div class="zone" id="dealerZone">
+        <h2>庄家（隐藏）</h2>
+        <div id="dealerHand" class="hand"></div>
+        <div id="dealerTotal" class="total">点数：—（未公开）</div>
+      </div>
+
+      <div class="zone" id="playerZone">
+        <h2>玩家</h2>
+        <div id="playerHand" class="hand"></div>
+        <div id="playerTotal" class="total">点数：0</div>
+        <div id="banner" class="banner" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./src/game.js"></script>
+</body>
+</html>
