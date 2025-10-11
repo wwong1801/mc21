@@ -4,7 +4,49 @@ import {
   scoreHand, isFiveCard, isBust, isBlackjack, isDoubleAce
 } from "./rules.js";
 
-// --- State ---
+/* -------------------- SFX helper -------------------- */
+const sfx = (() => {
+  const cache = new Map();
+  const fallbackBeep = (freq = 440, ms = 120) => {
+    // Tiny WebAudio beep if a file is missing or blocked
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      g.gain.setValueAtTime(0.12, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + ms / 1000);
+      o.stop(ctx.currentTime + ms / 1000);
+    } catch {}
+  };
+  const load = (name, src) => {
+    const a = new Audio(src);
+    a.preload = "auto";
+    cache.set(name, a);
+  };
+  const play = (name) => {
+    const a = cache.get(name);
+    if (!a) { fallbackBeep(420, 90); return; }
+    try {
+      a.currentTime = 0;
+      a.play();
+    } catch {
+      fallbackBeep(420, 90);
+    }
+  };
+  // Register files (swap with your own later)
+  load("deal", "./sounds/deal.mp3");
+  load("click", "./sounds/click.mp3");
+  load("win", "./sounds/win.mp3");
+  load("lose", "./sounds/lose.mp3");
+  return { play };
+})();
+
+/* -------------------- State -------------------- */
 const state = {
   deck: [],
   player: [],
@@ -15,7 +57,7 @@ const state = {
   bet: 100,
 };
 
-// --- DOM ---
+/* -------------------- DOM -------------------- */
 const dealerHandEl = document.getElementById("dealerHand");
 const dealerTotalEl = document.getElementById("dealerTotal");
 const playerHandEl = document.getElementById("playerHand");
@@ -27,17 +69,25 @@ const btnHit = document.getElementById("hitBtn");
 const btnStand = document.getElementById("standBtn");
 const betInput = document.getElementById("betInput");
 
-btnNew.addEventListener("click", newRound);
-btnHit.addEventListener("click", onHit);
-btnStand.addEventListener("click", onStand);
-
-window.addEventListener("keydown", (e) => {
-  if (e.key === "n" || e.key === "N") newRound();
-  if (e.key === "h" || e.key === "H") onHit();
-  if (e.key === "s" || e.key === "S") onStand();
+/* Button click sfx */
+[btnNew, btnHit, btnStand].forEach(btn => {
+  if (!btn) return;
+  btn.addEventListener("click", () => sfx.play("click"));
 });
 
-// --- Flow ---
+/* Keyboard shortcuts */
+window.addEventListener("keydown", (e) => {
+  if (e.key === "n" || e.key === "N") { sfx.play("click"); newRound(); }
+  if (e.key === "h" || e.key === "H") { sfx.play("click"); onHit(); }
+  if (e.key === "s" || e.key === "S") { sfx.play("click"); onStand(); }
+});
+
+/* Wire buttons */
+btnNew?.addEventListener("click", newRound);
+btnHit?.addEventListener("click", onHit);
+btnStand?.addEventListener("click", onStand);
+
+/* -------------------- Flow -------------------- */
 function newRound() {
   // read bet (min 1)
   const b = Math.max(1, parseInt(betInput?.value || "100", 10) || 100);
@@ -51,15 +101,16 @@ function newRound() {
   state.revealed = false;
   hideBanner();
 
-  // lock bet during round
   setBetLocked(true);
 
-  // initial deal: 2 each
+  // initial deal: 2 each (play deal sfx twice)
   let pkg = dealFromTop(state.deck, 2);
   state.player = pkg.hand; state.deck = pkg.deck;
+  sfx.play("deal");
 
   pkg = dealFromTop(state.deck, 2);
   state.dealer = pkg.hand; state.deck = pkg.deck;
+  setTimeout(() => sfx.play("deal"), 80);
 
   render();
 }
@@ -71,6 +122,8 @@ function onHit() {
   state.player.push(...pkg.hand);
   state.deck = pkg.deck;
 
+  sfx.play("deal");
+
   if (isFiveCard(state.player)) {
     showBanner("你已达到 5 张上限。进入结算…");
     dealerTurnAndSettle();
@@ -78,6 +131,7 @@ function onHit() {
   }
   if (isBust(state.player)) {
     showBanner("玩家爆了（>21）。进入结算…");
+    sfx.play("lose"); // bust sound
     dealerTurnAndSettle();
     return;
   }
@@ -101,17 +155,26 @@ function dealerTurnAndSettle() {
   state.phase = "dealer";
   state.revealed = true;
 
-  while (!isBust(state.dealer) && !isFiveCard(state.dealer) && scoreHand(state.dealer) < 16) {
+  // Dealer draws with little delays for feel
+  const step = () => {
+    if (isBust(state.dealer) || isFiveCard(state.dealer) || scoreHand(state.dealer) >= 16) {
+      const outcome = settleWithMCRules();
+      endRound(outcome);
+      return;
+    }
     const pkg = dealFromTop(state.deck, 1);
     state.dealer.push(...pkg.hand);
     state.deck = pkg.deck;
-  }
+    sfx.play("deal");
+    render();
+    setTimeout(step, 220);
+  };
 
-  const outcome = settleWithMCRules();
-  endRound(outcome);
+  render();
+  setTimeout(step, 180);
 }
 
-// --- MC payout / outcome text ---
+/* -------------------- Outcome / payouts -------------------- */
 function settleWithMCRules() {
   const p = state.player, d = state.dealer;
   const pt = scoreHand(p), dt = scoreHand(d);
@@ -139,11 +202,14 @@ function endRound(res) {
   state.phase = "done";
 
   const bet = state.bet;
-  const delta = bet * res.mult; // win(+) / lose(-)
+  const delta = bet * res.mult;
   const sign = delta > 0 ? "+" : "";
   showBanner(`${res.text} · 下注：${bet} · 变动：${sign}${delta}`);
 
-  // unlock bet for next round
+  // win/lose sounds
+  if (res.mult > 0) sfx.play("win");
+  else if (res.mult < 0) sfx.play("lose");
+
   setBetLocked(false);
 
   state.history.unshift({
@@ -159,7 +225,7 @@ function endRound(res) {
   render();
 }
 
-// --- View helpers ---
+/* -------------------- View helpers -------------------- */
 function showBanner(msg) { bannerEl.hidden = false; bannerEl.textContent = msg; }
 function hideBanner() { bannerEl.hidden = true; bannerEl.textContent = ""; }
 function setBetLocked(locked) { if (betInput) betInput.disabled = locked; }
@@ -201,5 +267,5 @@ function render() {
   btnStand.disabled = !(state.phase === "player") || mustHitAfterTwo || playerBust;
 }
 
-// boot
+/* boot */
 newRound();
