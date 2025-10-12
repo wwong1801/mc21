@@ -51,6 +51,13 @@
   };
 </script>
 
+  <!-- DIRECT RAW AUDIO TEST (bypass sfx helper) -->
+<div style="display:flex;gap:8px;margin:8px 0;">
+  <button onclick="new Audio('./sounds/deal.mp3').play()">🔊 Raw Deal</button>
+  <button onclick="new Audio('./sounds/win.mp3').play()">🔊 Raw Win</button>
+  <button onclick="new Audio('./sounds/lose.mp3').play()">🔊 Raw Lose</button>
+</div>
+  
   <script type="module" src="./src/game.js"></script>
 </body>
 </html>
