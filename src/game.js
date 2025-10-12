@@ -4,47 +4,55 @@ import {
   scoreHand, isFiveCard, isBust, isBlackjack, isDoubleAce
 } from "./rules.js";
 
-/* -------------------- SFX helper (no files; WebAudio synth) -------------------- */
+/* -------------------- SFX helper (unlock + clone-per-play) -------------------- */
 const sfx = (() => {
-  let ctx;
-  function ensureCtx() {
-    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === "suspended") ctx.resume();
-  }
-  function beep({freq=440, ms=120, type="sine", vol=0.12}) {
-    ensureCtx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = type;
-    o.frequency.value = freq;
-    o.connect(g); g.connect(ctx.destination);
-    const now = ctx.currentTime;
-    g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(vol, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + ms/1000);
-    o.start(now);
-    o.stop(now + ms/1000);
-  }
-  const play = (name) => {
-    // simple sound design
-    if (name === "click") { beep({freq:700, ms:60, type:"square", vol:0.15}); return; }
-    if (name === "deal")  { beep({freq:520, ms:90, type:"triangle", vol:0.12}); return; }
-    if (name === "win")   { beep({freq:660, ms:120}); setTimeout(()=>beep({freq:880, ms:140}),110); return; }
-    if (name === "lose")  { beep({freq:300, ms:160, type:"sawtooth"}); return; }
-  };
+  const cache = new Map();
 
-  // unlock on first gesture
-  const unlock = () => { try { ensureCtx(); } catch {} 
-    window.removeEventListener("click", unlock);
-    window.removeEventListener("keydown", unlock);
-    window.removeEventListener("touchstart", unlock, {passive:true});
-  };
-  window.addEventListener("click", unlock);
-  window.addEventListener("keydown", unlock);
-  window.addEventListener("touchstart", unlock, {passive:true});
+  // Preload base audio elements
+  function load(name, src) {
+    const a = new Audio(src);
+    a.preload = "auto";
+    cache.set(name, a);
+  }
+  load("deal",  "./sounds/deal.mp3");
+  load("click", "./sounds/click.mp3");
+  load("win",   "./sounds/win.mp3");
+  load("lose",  "./sounds/lose.mp3");
+
+  // One-time unlock for stricter browsers
+  let unlocked = false;
+  function unlockOnce() {
+    if (unlocked) return;
+    unlocked = true;
+    // Prime HTMLAudio so later play() succeeds even outside direct clicks
+    cache.forEach((a) => {
+      a.muted = true;
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
+               .catch(() => {});
+    });
+    window.removeEventListener("click", unlockOnce);
+    window.removeEventListener("keydown", unlockOnce);
+    window.removeEventListener("touchstart", unlockOnce, { passive: true });
+  }
+  window.addEventListener("click", unlockOnce);
+  window.addEventListener("keydown", unlockOnce);
+  window.addEventListener("touchstart", unlockOnce, { passive: true });
+
+  // Play using a fresh clone so it works outside direct clicks & can overlap
+  function play(name) {
+    const base = cache.get(name);
+    if (!base) return;
+    try {
+      const a = base.cloneNode(true);
+      a.currentTime = 0;
+      a.volume = 0.9;
+      a.play().catch(() => {});
+    } catch {}
+  }
 
   return { play };
 })();
+
 
 
 /* -------------------- State -------------------- */
