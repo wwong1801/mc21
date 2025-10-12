@@ -39,6 +39,17 @@
       </div>
     </section>
   </main>
+<div style="display:flex;gap:8px;margin:8px 0;">
+  <button onclick="window.__test('deal')">Test deal</button>
+  <button onclick="window.__test('win')">Test win</button>
+  <button onclick="window.__test('lose')">Test lose</button>
+</div>
+<script>
+  window.__test = (name) => { 
+    console.log('TEST sfx:', name);
+    try { sfx.play(name); } catch(e) { console.log(e); }
+  };
+</script>
 
   <script type="module" src="./src/game.js"></script>
 </body>
