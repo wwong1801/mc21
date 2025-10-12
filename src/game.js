@@ -19,26 +19,30 @@ const sfx = (() => {
   load("win",   "./sounds/win.mp3");
   load("lose",  "./sounds/lose.mp3");
 
-  // One-time unlock for stricter browsers
+  // One-time unlock & prime so later play() works even outside direct clicks
   let unlocked = false;
   function unlockOnce() {
     if (unlocked) return;
     unlocked = true;
-    // Prime HTMLAudio so later play() succeeds even outside direct clicks
+
+    // Prime each element (silent play → pause → reset)
     cache.forEach((a) => {
       a.muted = true;
       a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
                .catch(() => {});
     });
+
     window.removeEventListener("click", unlockOnce);
     window.removeEventListener("keydown", unlockOnce);
     window.removeEventListener("touchstart", unlockOnce, { passive: true });
+    window.removeEventListener("pointerdown", unlockOnce);
   }
   window.addEventListener("click", unlockOnce);
   window.addEventListener("keydown", unlockOnce);
   window.addEventListener("touchstart", unlockOnce, { passive: true });
+  window.addEventListener("pointerdown", unlockOnce);
 
-  // Play using a fresh clone so it works outside direct clicks & can overlap
+  // Fresh clone each time so it always plays & can overlap
   function play(name) {
     const base = cache.get(name);
     if (!base) return;
