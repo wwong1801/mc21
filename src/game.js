@@ -4,47 +4,69 @@ import {
   scoreHand, isFiveCard, isBust, isBlackjack, isDoubleAce
 } from "./rules.js";
 
-/* -------------------- SFX helper -------------------- */
+/* -------------------- SFX helper (unlock + overlap-safe) -------------------- */
 const sfx = (() => {
   const cache = new Map();
-  const fallbackBeep = (freq = 440, ms = 120) => {
-    // Tiny WebAudio beep if a file is missing or blocked
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.value = freq;
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.start();
-      g.gain.setValueAtTime(0.12, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + ms / 1000);
-      o.stop(ctx.currentTime + ms / 1000);
-    } catch {}
-  };
+
+  // load & cache base Audio elements
   const load = (name, src) => {
     const a = new Audio(src);
     a.preload = "auto";
     cache.set(name, a);
   };
-  const play = (name) => {
-    const a = cache.get(name);
-    if (!a) { fallbackBeep(420, 90); return; }
-    try {
-      a.currentTime = 0;
-      a.play();
-    } catch {
-      fallbackBeep(420, 90);
-    }
-  };
-  // Register files (swap with your own later)
   load("deal", "./sounds/deal.mp3");
   load("click", "./sounds/click.mp3");
-  load("win", "./sounds/win.mp3");
-  load("lose", "./sounds/lose.mp3");
+  load("win",   "./sounds/win.mp3");
+  load("lose",  "./sounds/lose.mp3");
+
+  // One-time unlock for stricter browsers (iOS/Safari/Chrome policies)
+  let unlocked = false;
+  function unlockOnce() {
+    if (unlocked) return;
+    unlocked = true;
+
+    // 1) Try to resume a WebAudio context (not strictly required, but helps)
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
+      // short silent blip to fully unlock
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.01);
+    } catch {}
+
+    // 2) Prime HTMLAudio elements: play muted then pause/reset
+    cache.forEach((a) => {
+      a.muted = true;
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
+               .catch(() => {/* ignore */});
+    });
+
+    window.removeEventListener("click", unlockOnce);
+    window.removeEventListener("keydown", unlockOnce);
+    window.removeEventListener("touchstart", unlockOnce, { passive: true });
+  }
+  window.addEventListener("click", unlockOnce);
+  window.addEventListener("keydown", unlockOnce);
+  window.addEventListener("touchstart", unlockOnce, { passive: true });
+
+  // Play using a fresh clone each time (allows overlap, avoids stuck states)
+  const play = (name) => {
+    const base = cache.get(name);
+    if (!base) return;
+    try {
+      const a = base.cloneNode(); // fresh Audio
+      a.currentTime = 0;
+      a.volume = 0.85;
+      a.play().catch(() => {/* ignore; will be unlocked after first gesture */});
+    } catch {/* ignore */}
+  };
+
   return { play };
 })();
+
 
 /* -------------------- State -------------------- */
 const state = {
