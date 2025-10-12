@@ -4,65 +4,44 @@ import {
   scoreHand, isFiveCard, isBust, isBlackjack, isDoubleAce
 } from "./rules.js";
 
-/* -------------------- SFX helper (unlock + overlap-safe) -------------------- */
+/* -------------------- SFX helper (no files; WebAudio synth) -------------------- */
 const sfx = (() => {
-  const cache = new Map();
-
-  // load & cache base Audio elements
-  const load = (name, src) => {
-    const a = new Audio(src);
-    a.preload = "auto";
-    cache.set(name, a);
-  };
-  load("deal", "./sounds/deal.mp3");
-  load("click", "./sounds/click.mp3");
-  load("win",   "./sounds/win.mp3");
-  load("lose",  "./sounds/lose.mp3");
-
-  // One-time unlock for stricter browsers (iOS/Safari/Chrome policies)
-  let unlocked = false;
-  function unlockOnce() {
-    if (unlocked) return;
-    unlocked = true;
-
-    // 1) Try to resume a WebAudio context (not strictly required, but helps)
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === "suspended") ctx.resume();
-      // short silent blip to fully unlock
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      g.gain.value = 0.0001;
-      o.connect(g); g.connect(ctx.destination);
-      o.start(); o.stop(ctx.currentTime + 0.01);
-    } catch {}
-
-    // 2) Prime HTMLAudio elements: play muted then pause/reset
-    cache.forEach((a) => {
-      a.muted = true;
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
-               .catch(() => {/* ignore */});
-    });
-
-    window.removeEventListener("click", unlockOnce);
-    window.removeEventListener("keydown", unlockOnce);
-    window.removeEventListener("touchstart", unlockOnce, { passive: true });
+  let ctx;
+  function ensureCtx() {
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
   }
-  window.addEventListener("click", unlockOnce);
-  window.addEventListener("keydown", unlockOnce);
-  window.addEventListener("touchstart", unlockOnce, { passive: true });
-
-  // Play using a fresh clone each time (allows overlap, avoids stuck states)
+  function beep({freq=440, ms=120, type="sine", vol=0.12}) {
+    ensureCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    o.connect(g); g.connect(ctx.destination);
+    const now = ctx.currentTime;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(vol, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + ms/1000);
+    o.start(now);
+    o.stop(now + ms/1000);
+  }
   const play = (name) => {
-    const base = cache.get(name);
-    if (!base) return;
-    try {
-      const a = base.cloneNode(); // fresh Audio
-      a.currentTime = 0;
-      a.volume = 0.85;
-      a.play().catch(() => {/* ignore; will be unlocked after first gesture */});
-    } catch {/* ignore */}
+    // simple sound design
+    if (name === "click") { beep({freq:700, ms:60, type:"square", vol:0.15}); return; }
+    if (name === "deal")  { beep({freq:520, ms:90, type:"triangle", vol:0.12}); return; }
+    if (name === "win")   { beep({freq:660, ms:120}); setTimeout(()=>beep({freq:880, ms:140}),110); return; }
+    if (name === "lose")  { beep({freq:300, ms:160, type:"sawtooth"}); return; }
   };
+
+  // unlock on first gesture
+  const unlock = () => { try { ensureCtx(); } catch {} 
+    window.removeEventListener("click", unlock);
+    window.removeEventListener("keydown", unlock);
+    window.removeEventListener("touchstart", unlock, {passive:true});
+  };
+  window.addEventListener("click", unlock);
+  window.addEventListener("keydown", unlock);
+  window.addEventListener("touchstart", unlock, {passive:true});
 
   return { play };
 })();
