@@ -57,6 +57,62 @@
   <button onclick="new Audio('./sounds/win.mp3').play()">🔊 Raw Win</button>
   <button onclick="new Audio('./sounds/lose.mp3').play()">🔊 Raw Lose</button>
 </div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ⬇️ Replace with your config from Firebase console (Web app settings)
+  const firebaseConfig = {
+    apiKey: "AIzaSyAIro5ymv33s82pZQYuNV_8Uo4TzOp4Fe8",
+    authDomain: "mc21-8e9d1.firebaseapp.com",
+    projectId: "mc21-8e9d1",
+    storageBucket: "mc21-8e9d1.firebasestorage.app",
+    messagingSenderId: "32721916885",
+    appId: "1:32721916885:web:7731d35283c3e91995a35c"
+  };
+
+  // Init
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Sign in anonymously (so writes are associated to a uid)
+  await signInAnonymously(auth);
+
+  // Expose a tiny helper for your game to save rounds later
+  window.saveRound = async (round) => {
+    try {
+      const uid = auth.currentUser?.uid || null;
+      await addDoc(collection(db, "rounds"), {
+        uid,
+        bet: round.bet,
+        delta: round.delta,
+        outcome: round.outcome, // e.g. "P_NORMAL_WIN"
+        pt: round.pt,
+        dt: round.dt,
+        player: round.player,   // e.g. ["AS","KD"]
+        dealer: round.dealer,
+        createdAt: serverTimestamp(),
+      });
+      // console.log("round saved");
+    } catch (e) {
+      console.error("saveRound error", e);
+    }
+  };
+
+  // Quick test button (remove later)
+  window.testSave = async () => {
+    await window.saveRound?.({
+      bet: 100, delta: +100, outcome: "TEST_WIN",
+      pt: 21, dt: 18, player: ["A♠","K♦"], dealer: ["10♣","8♥"]
+    });
+    alert("Test round saved (check Firestore/rounds).");
+  };
+</script>
+
+<!-- TEMP test UI -->
+<button onclick="window.testSave()" style="margin:8px 0">Save TEST round</button>
   
   <script type="module" src="./src/game.js"></script>
 </body>
