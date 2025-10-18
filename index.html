@@ -77,6 +77,18 @@
   <div id="openTables" style="margin-top:8px;font-size:14px;opacity:.9;"></div>
 </section>
 
+<!-- 🧑‍✈️ Host Panel -->
+<section id="hostPanel" class="zone" style="margin:12px 0;">
+  <h2>🧑‍✈️ Host Controls</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <input id="hostTableId" placeholder="Table ID" style="padding:8px;border-radius:8px;min-width:260px;" />
+    <button id="btnStartRound">Start Round (BETTING)</button>
+    <input id="roundId" placeholder="Round ID" style="padding:8px;border-radius:8px;min-width:260px;" />
+    <button id="btnDealInitial">Deal Initial</button>
+    <button id="btnDealerTurn">Dealer Turn + Settle</button>
+  </div>
+</section>
+
   
 <script type="module">
   import { auth, db, ready } from "./src/multiplayer/firebase.js";
@@ -147,6 +159,29 @@
     openTablesEl.querySelectorAll(".pick").forEach(btn => {
       btn.onclick = () => { tableIdInput.value = btn.getAttribute("data-id"); };
     });
+  });
+</script>
+  
+<script type="module">
+  import { startRound, dealInitial, dealerTurn } from "./src/multiplayer/round.js";
+
+  const hostTableId = document.getElementById("hostTableId");
+  const roundId     = document.getElementById("roundId");
+  document.getElementById("btnStartRound")?.addEventListener("click", async () => {
+    if (!hostTableId.value) return alert("Enter Table ID");
+    const id = await startRound(hostTableId.value.trim());
+    roundId.value = id;
+    alert("Round started: " + id);
+  });
+  document.getElementById("btnDealInitial")?.addEventListener("click", async () => {
+    if (!hostTableId.value || !roundId.value) return alert("Need Table ID and Round ID");
+    await dealInitial(hostTableId.value.trim(), roundId.value.trim());
+    alert("Dealt initial cards.");
+  });
+  document.getElementById("btnDealerTurn")?.addEventListener("click", async () => {
+    if (!hostTableId.value || !roundId.value) return alert("Need Table ID and Round ID");
+    await dealerTurn(hostTableId.value.trim(), roundId.value.trim());
+    alert("Dealer played and settled.");
   });
 </script>
 
