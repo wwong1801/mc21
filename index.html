@@ -74,6 +74,11 @@
 
 <!-- TEMP test UI -->
 <button onclick="window.testSave()" style="margin:8px 0">Save TEST round</button>
+
+<script type="module">
+  import { startPresence } from "./src/multiplayer/presence.js";
+  startPresence();
+</script>
   
   <script type="module" src="./src/game.js"></script>
 </body>
