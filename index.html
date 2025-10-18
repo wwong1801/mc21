@@ -51,12 +51,33 @@
   };
 </script>
 
-  <!-- DIRECT RAW AUDIO TEST (bypass sfx helper) -->
+<!-- DIRECT RAW AUDIO TEST (bypass sfx helper) -->
 <div style="display:flex;gap:8px;margin:8px 0;">
   <button onclick="new Audio('./sounds/deal.mp3').play()">🔊 Raw Deal</button>
   <button onclick="new Audio('./sounds/win.mp3').play()">🔊 Raw Win</button>
   <button onclick="new Audio('./sounds/lose.mp3').play()">🔊 Raw Lose</button>
 </div>
+
+<!-- 🔰 Minimal Lobby -->
+<section id="lobby" class="zone" style="margin:12px 0;">
+  <h2>🎮 Lobby</h2>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button id="btnCreateTable">Create Table</button>
+    <input id="displayName" placeholder="Your name" style="padding:8px;border-radius:8px;" />
+    <input id="tableIdInput" placeholder="Table ID to join" style="padding:8px;border-radius:8px;min-width:280px;" />
+    <select id="seatSelect" style="padding:8px;border-radius:8px;">
+      <option value="">Seat…</option>
+      <option value="S1">S1</option>
+      <option value="S2">S2</option>
+      <option value="S3">S3</option>
+      <option value="S4">S4</option>
+    </select>
+    <button id="btnJoinSeat">Join Seat</button>
+  </div>
+  <div id="openTables" style="margin-top:8px;font-size:14px;opacity:.9;"></div>
+</section>
+
+  
 <script type="module">
   import { auth, db, ready } from "./src/multiplayer/firebase.js";
 
@@ -74,11 +95,61 @@
 
 <!-- TEMP test UI -->
 <button onclick="window.testSave()" style="margin:8px 0">Save TEST round</button>
-
+  
 <script type="module">
   import { startPresence } from "./src/multiplayer/presence.js";
   startPresence();
 </script>
+
+  <script type="module">
+  import { createTable, joinSeat, watchOpenTables, getAvailableSeats } from "./src/multiplayer/tables.js";
+  import { auth, ready } from "./src/multiplayer/firebase.js";
+
+  const btnCreate = document.getElementById("btnCreateTable");
+  const displayName = document.getElementById("displayName");
+  const tableIdInput = document.getElementById("tableIdInput");
+  const seatSelect = document.getElementById("seatSelect");
+  const openTablesEl = document.getElementById("openTables");
+
+  await ready;
+
+  btnCreate?.addEventListener("click", async () => {
+    const id = await createTable({ maxSeats: 4 });
+    tableIdInput.value = id;
+    alert("Table created: " + id);
+  });
+
+  document.getElementById("btnJoinSeat")?.addEventListener("click", async () => {
+    const tableId = tableIdInput.value.trim();
+    const seatId = seatSelect.value;
+    const name = (displayName.value || "Player") + " · " + auth.currentUser.uid.slice(0,4);
+    if (!tableId || !seatId) return alert("Enter Table ID and select a Seat");
+    try {
+      await joinSeat(tableId, seatId, name);
+      alert(`Joined ${tableId} at ${seatId}`);
+      // Optional: show free seats after join
+      const free = await getAvailableSeats(tableId);
+      console.log("Free seats:", free);
+    } catch (e) {
+      alert("Join failed: " + (e?.message || e));
+    }
+  });
+
+  // Show open tables list
+  watchOpenTables((rows) => {
+    if (!rows.length) { openTablesEl.innerHTML = "No open tables yet."; return; }
+    openTablesEl.innerHTML = rows.map(r =>
+      `<div style="margin:4px 0;">
+        <code>${r.id}</code> — status: <b>${r.status}</b> — host: ${r.hostUid?.slice(0,6)}…
+        <button data-id="${r.id}" class="pick">Use this ID</button>
+      </div>`
+    ).join("");
+    openTablesEl.querySelectorAll(".pick").forEach(btn => {
+      btn.onclick = () => { tableIdInput.value = btn.getAttribute("data-id"); };
+    });
+  });
+</script>
+
   
   <script type="module" src="./src/game.js"></script>
 </body>
