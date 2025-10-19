@@ -39,9 +39,7 @@
     </section>
   </main>
 
- 
-
-  <!-- 🔊 Safe tests (no dependency on sfx) -->
+  <!-- 🔊 Raw Sound Tests -->
   <div style="display:flex;gap:8px;margin:8px 0;">
     <button onclick="new Audio('./sounds/deal.mp3').play()">🔊 Raw Deal</button>
     <button onclick="new Audio('./sounds/win.mp3').play()">🔊 Raw Win</button>
@@ -58,7 +56,6 @@
     console.log("✅ Firebase ready. UID =", auth.currentUser?.uid);
     document.title = "21点 · Player Turn (UID: " + auth.currentUser.uid.slice(0,6) + "…)";
 
-    // Restore saveRound helper
     window.saveRound = async (round) => {
       try {
         const uid = auth.currentUser?.uid || null;
@@ -79,7 +76,6 @@
       }
     };
 
-    // Restore testSave so your button works
     window.testSave = async () => {
       await window.saveRound?.({
         bet: 100, delta: +100, outcome: "TEST_WIN",
@@ -89,56 +85,54 @@
     };
   </script>
 
-  <!-- 💬 Presence (optional but recommended if you created presence.js) -->
+  <!-- 💬 Presence (optional) -->
   <script type="module">
     import { startPresence } from "./src/multiplayer/presence.js";
-    // Comment this out if you haven't created presence.js yet
     startPresence();
   </script>
 
   <!-- 🌐 Public Room (anyone can join) -->
-<section id="publicMP" class="zone" style="margin:12px 0;">
-  <h2>🌐 Public Multiplayer</h2>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <span id="mpInfo">Joining…</span>
-    <input id="mpBet" type="number" min="1" step="1" value="100" style="padding:8px;border-radius:8px;width:120px;">
-    <button id="mpPlaceBet">Bet</button>
-    <button id="mpStart">Start</button>
-    <button id="mpDeal">Deal</button>
-    <button id="mpHit">Hit</button>
-    <button id="mpStand">Stand</button>
-    <button id="mpSettle">Dealer+Settle</button>
-  </div>
-</section>
+  <section id="publicMP" class="zone" style="margin:12px 0;">
+    <h2>🌐 Public Multiplayer</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <span id="mpInfo">Joining…</span>
+      <input id="mpBet" type="number" min="1" step="1" value="100" style="padding:8px;border-radius:8px;width:120px;">
+      <button id="mpPlaceBet">Bet</button>
+      <button id="mpStart">Start</button>
+      <button id="mpDeal">Deal</button>
+      <button id="mpHit">Hit</button>
+      <button id="mpStand">Stand</button>
+      <button id="mpSettle">Dealer+Settle</button>
+    </div>
+  </section>
 
+  <!-- 🔄 Public Room Script -->
+  <script type="module">
+    import { ready, auth } from "./src/multiplayer/firebase.js";
+    import { initPublicRoom, placeBet, startRound, dealInitial, hit, stand, dealerAndSettle } from "./src/multiplayer/public_room.js";
 
-  <!-- Buttons to trigger the Firestore test write -->
+    const $ = (id) => document.getElementById(id);
+    await ready;
+
+    // Auto-join public room
+    const { tableId, seatId } = await initPublicRoom("Player");
+    $("mpInfo").textContent = `Table: ${tableId} · Your seat: ${seatId} · UID: ${auth.currentUser.uid.slice(0,6)}…`;
+
+    $("mpPlaceBet").onclick = async () => {
+      await placeBet(seatId, Number($("mpBet").value || 1));
+      alert("Bet placed.");
+    };
+    $("mpStart").onclick  = async () => { await startRound(); };
+    $("mpDeal").onclick   = async () => { await dealInitial(); };
+    $("mpHit").onclick    = async () => { await hit(seatId); };
+    $("mpStand").onclick  = async () => { await stand(seatId); };
+    $("mpSettle").onclick = async () => { await dealerAndSettle(); };
+  </script>
+
+  <!-- 🧪 Firestore Test Button -->
   <button onclick="window.testSave()" style="margin:8px 0">Save TEST round</button>
-<script type="module">
-  import { ready, auth } from "./src/multiplayer/firebase.js";
-  import { initPublicRoom, placeBet, startRound, dealInitial, hit, stand, dealerAndSettle } from "./src/multiplayer/public_room.js";
 
-  const $ = (id) => document.getElementById(id);
-  await ready;
-
-  // Auto-join the public room
-  const { tableId, seatId } = await initPublicRoom("Player");
-  $("mpInfo").textContent = `Table: ${tableId} · Your seat: ${seatId} · UID: ${auth.currentUser.uid.slice(0,6)}…`;
-
-  $("mpPlaceBet").onclick = async () => {
-    await placeBet(seatId, Number($("mpBet").value || 1));
-    alert("Bet placed.");
-  };
-  $("mpStart").onclick  = async () => { await startRound(); };
-  $("mpDeal").onclick   = async () => { await dealInitial(); };
-  $("mpHit").onclick    = async () => { await hit(seatId); };
-  $("mpStand").onclick  = async () => { await stand(seatId); };
-  $("mpSettle").onclick = async () => { await dealerAndSettle(); };
-</script>
-
-  
-  
-  <!-- Single-player game (kept as-is) -->
+  <!-- 🎮 Single-player Game -->
   <script type="module" src="./src/game.js"></script>
 </body>
 </html>
