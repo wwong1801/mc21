@@ -11,7 +11,6 @@
     <header class="bar">
       <h1>🃏 21点 · Player Turn</h1>
 
-      <!-- Add inside <header class="bar"> ... -->
       <div class="bet">
         <label for="betInput">下注</label>
         <input id="betInput" type="number" min="1" step="1" value="100" style="width:90px" />
@@ -39,153 +38,178 @@
       </div>
     </section>
   </main>
-<div style="display:flex;gap:8px;margin:8px 0;">
-  <button onclick="window.__test('deal')">Test deal</button>
-  <button onclick="window.__test('win')">Test win</button>
-  <button onclick="window.__test('lose')">Test lose</button>
-</div>
-<script>
-  window.__test = (name) => { 
-    console.log('TEST sfx:', name);
-    try { sfx.play(name); } catch(e) { console.log(e); }
-  };
-</script>
 
-<!-- DIRECT RAW AUDIO TEST (bypass sfx helper) -->
-<div style="display:flex;gap:8px;margin:8px 0;">
-  <button onclick="new Audio('./sounds/deal.mp3').play()">🔊 Raw Deal</button>
-  <button onclick="new Audio('./sounds/win.mp3').play()">🔊 Raw Win</button>
-  <button onclick="new Audio('./sounds/lose.mp3').play()">🔊 Raw Lose</button>
-</div>
+  <!-- 🔰 Minimal Lobby -->
+  <section id="lobby" class="zone" style="margin:12px 0;">
+    <h2>🎮 Lobby</h2>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button id="btnCreateTable">Create Table</button>
+      <input id="displayName" placeholder="Your name" style="padding:8px;border-radius:8px;" />
+      <input id="tableIdInput" placeholder="Table ID to join" style="padding:8px;border-radius:8px;min-width:280px;" />
+      <select id="seatSelect" style="padding:8px;border-radius:8px;">
+        <option value="">Seat…</option>
+        <option value="S1">S1</option>
+        <option value="S2">S2</option>
+        <option value="S3">S3</option>
+        <option value="S4">S4</option>
+      </select>
+      <button id="btnJoinSeat">Join Seat</button>
+    </div>
+    <div id="openTables" style="margin-top:8px;font-size:14px;opacity:.9;"></div>
+  </section>
 
-<!-- 🔰 Minimal Lobby -->
-<section id="lobby" class="zone" style="margin:12px 0;">
-  <h2>🎮 Lobby</h2>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-    <button id="btnCreateTable">Create Table</button>
-    <input id="displayName" placeholder="Your name" style="padding:8px;border-radius:8px;" />
-    <input id="tableIdInput" placeholder="Table ID to join" style="padding:8px;border-radius:8px;min-width:280px;" />
-    <select id="seatSelect" style="padding:8px;border-radius:8px;">
-      <option value="">Seat…</option>
-      <option value="S1">S1</option>
-      <option value="S2">S2</option>
-      <option value="S3">S3</option>
-      <option value="S4">S4</option>
-    </select>
-    <button id="btnJoinSeat">Join Seat</button>
+  <!-- 🧑‍✈️ Host Panel -->
+  <section id="hostPanel" class="zone" style="margin:12px 0;">
+    <h2>🧑‍✈️ Host Controls</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input id="hostTableId" placeholder="Table ID" style="padding:8px;border-radius:8px;min-width:260px;" />
+      <button id="btnStartRound">Start Round (BETTING)</button>
+      <input id="roundId" placeholder="Round ID" style="padding:8px;border-radius:8px;min-width:260px;" />
+      <button id="btnDealInitial">Deal Initial</button>
+      <button id="btnDealerTurn">Dealer Turn + Settle</button>
+    </div>
+  </section>
+
+  <!-- 🔊 Safe tests (no dependency on sfx) -->
+  <div style="display:flex;gap:8px;margin:8px 0;">
+    <button onclick="new Audio('./sounds/deal.mp3').play()">🔊 Raw Deal</button>
+    <button onclick="new Audio('./sounds/win.mp3').play()">🔊 Raw Win</button>
+    <button onclick="new Audio('./sounds/lose.mp3').play()">🔊 Raw Lose</button>
   </div>
-  <div id="openTables" style="margin-top:8px;font-size:14px;opacity:.9;"></div>
-</section>
 
-<!-- 🧑‍✈️ Host Panel -->
-<section id="hostPanel" class="zone" style="margin:12px 0;">
-  <h2>🧑‍✈️ Host Controls</h2>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <input id="hostTableId" placeholder="Table ID" style="padding:8px;border-radius:8px;min-width:260px;" />
-    <button id="btnStartRound">Start Round (BETTING)</button>
-    <input id="roundId" placeholder="Round ID" style="padding:8px;border-radius:8px;min-width:260px;" />
-    <button id="btnDealInitial">Deal Initial</button>
-    <button id="btnDealerTurn">Dealer Turn + Settle</button>
-  </div>
-</section>
-
-  
-<script type="module">
-  import { auth, db, ready } from "./src/multiplayer/firebase.js";
-
-  // Simple sanity check: show UID in console and briefly in the page title
-  await ready;
-  console.log("Firebase ready. UID =", auth.currentUser?.uid);
-  document.title = "21点 · Player Turn (UID: " + auth.currentUser.uid.slice(0,6) + "…)";
-  
-  // (Optional) keep your existing window.saveRound here or move it later
-  // using the imported `db`. Example:
-  // import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  // window.saveRound = async (round) => { ...same as before using `db`... };
-</script>
-
-
-<!-- TEMP test UI -->
-<button onclick="window.testSave()" style="margin:8px 0">Save TEST round</button>
-  
-<script type="module">
-  import { startPresence } from "./src/multiplayer/presence.js";
-  startPresence();
-</script>
-
+  <!-- ✅ Firebase shared init + saveRound/testSave -->
   <script type="module">
-  import { createTable, joinSeat, watchOpenTables, getAvailableSeats } from "./src/multiplayer/tables.js";
-  import { auth, ready } from "./src/multiplayer/firebase.js";
+    import { auth, db, ready } from "./src/multiplayer/firebase.js";
+    import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  const btnCreate = document.getElementById("btnCreateTable");
-  const displayName = document.getElementById("displayName");
-  const tableIdInput = document.getElementById("tableIdInput");
-  const seatSelect = document.getElementById("seatSelect");
-  const openTablesEl = document.getElementById("openTables");
+    await ready;
 
-  await ready;
+    console.log("✅ Firebase ready. UID =", auth.currentUser?.uid);
+    document.title = "21点 · Player Turn (UID: " + auth.currentUser.uid.slice(0,6) + "…)";
 
-  btnCreate?.addEventListener("click", async () => {
-    const id = await createTable({ maxSeats: 4 });
-    tableIdInput.value = id;
-    alert("Table created: " + id);
-  });
+    // Restore saveRound helper
+    window.saveRound = async (round) => {
+      try {
+        const uid = auth.currentUser?.uid || null;
+        await addDoc(collection(db, "rounds"), {
+          uid,
+          bet: round.bet,
+          delta: round.delta,
+          outcome: round.outcome,
+          pt: round.pt,
+          dt: round.dt,
+          player: round.player,
+          dealer: round.dealer,
+          createdAt: serverTimestamp(),
+        });
+        console.log("✅ Round saved to Firestore");
+      } catch (e) {
+        console.error("❌ saveRound error", e);
+      }
+    };
 
-  document.getElementById("btnJoinSeat")?.addEventListener("click", async () => {
-    const tableId = tableIdInput.value.trim();
-    const seatId = seatSelect.value;
-    const name = (displayName.value || "Player") + " · " + auth.currentUser.uid.slice(0,4);
-    if (!tableId || !seatId) return alert("Enter Table ID and select a Seat");
-    try {
-      await joinSeat(tableId, seatId, name);
-      alert(`Joined ${tableId} at ${seatId}`);
-      // Optional: show free seats after join
-      const free = await getAvailableSeats(tableId);
-      console.log("Free seats:", free);
-    } catch (e) {
-      alert("Join failed: " + (e?.message || e));
-    }
-  });
+    // Restore testSave so your button works
+    window.testSave = async () => {
+      await window.saveRound?.({
+        bet: 100, delta: +100, outcome: "TEST_WIN",
+        pt: 21, dt: 18, player: ["A♠","K♦"], dealer: ["10♣","8♥"]
+      });
+      alert("✅ Test round saved (check Firestore/rounds).");
+    };
+  </script>
 
-  // Show open tables list
-  watchOpenTables((rows) => {
-    if (!rows.length) { openTablesEl.innerHTML = "No open tables yet."; return; }
-    openTablesEl.innerHTML = rows.map(r =>
-      `<div style="margin:4px 0;">
-        <code>${r.id}</code> — status: <b>${r.status}</b> — host: ${r.hostUid?.slice(0,6)}…
-        <button data-id="${r.id}" class="pick">Use this ID</button>
-      </div>`
-    ).join("");
-    openTablesEl.querySelectorAll(".pick").forEach(btn => {
-      btn.onclick = () => { tableIdInput.value = btn.getAttribute("data-id"); };
+  <!-- 💬 Presence (optional but recommended if you created presence.js) -->
+  <script type="module">
+    import { startPresence } from "./src/multiplayer/presence.js";
+    // Comment this out if you haven't created presence.js yet
+    startPresence();
+  </script>
+
+  <!-- 🧭 Lobby wiring -->
+  <script type="module">
+    import { createTable, joinSeat, watchOpenTables, getAvailableSeats } from "./src/multiplayer/tables.js";
+    import { auth, ready } from "./src/multiplayer/firebase.js";
+
+    const btnCreate = document.getElementById("btnCreateTable");
+    const displayName = document.getElementById("displayName");
+    const tableIdInput = document.getElementById("tableIdInput");
+    const seatSelect = document.getElementById("seatSelect");
+    const openTablesEl = document.getElementById("openTables");
+
+    await ready;
+
+    btnCreate?.addEventListener("click", async () => {
+      const id = await createTable({ maxSeats: 4 });
+      tableIdInput.value = id;
+      document.getElementById("hostTableId").value = id; // convenience
+      alert("Table created: " + id);
     });
-  });
-</script>
-  
-<script type="module">
-  import { startRound, dealInitial, dealerTurn } from "./src/multiplayer/round.js";
 
-  const hostTableId = document.getElementById("hostTableId");
-  const roundId     = document.getElementById("roundId");
-  document.getElementById("btnStartRound")?.addEventListener("click", async () => {
-    if (!hostTableId.value) return alert("Enter Table ID");
-    const id = await startRound(hostTableId.value.trim());
-    roundId.value = id;
-    alert("Round started: " + id);
-  });
-  document.getElementById("btnDealInitial")?.addEventListener("click", async () => {
-    if (!hostTableId.value || !roundId.value) return alert("Need Table ID and Round ID");
-    await dealInitial(hostTableId.value.trim(), roundId.value.trim());
-    alert("Dealt initial cards.");
-  });
-  document.getElementById("btnDealerTurn")?.addEventListener("click", async () => {
-    if (!hostTableId.value || !roundId.value) return alert("Need Table ID and Round ID");
-    await dealerTurn(hostTableId.value.trim(), roundId.value.trim());
-    alert("Dealer played and settled.");
-  });
-</script>
+    document.getElementById("btnJoinSeat")?.addEventListener("click", async () => {
+      const tableId = tableIdInput.value.trim();
+      const seatId = seatSelect.value;
+      const name = (displayName.value || "Player") + " · " + auth.currentUser.uid.slice(0,4);
+      if (!tableId || !seatId) return alert("Enter Table ID and select a Seat");
+      try {
+        await joinSeat(tableId, seatId, name);
+        alert(`Joined ${tableId} at ${seatId}`);
+        const free = await getAvailableSeats(tableId);
+        console.log("Free seats:", free);
+      } catch (e) {
+        alert("Join failed: " + (e?.message || e));
+      }
+    });
 
-  
+    // Show open tables list
+    watchOpenTables((rows) => {
+      if (!rows.length) { openTablesEl.innerHTML = "No open tables yet."; return; }
+      openTablesEl.innerHTML = rows.map(r =>
+        `<div style="margin:4px 0;">
+          <code>${r.id}</code> — status: <b>${r.status}</b> — host: ${r.hostUid?.slice(0,6)}…
+          <button data-id="${r.id}" class="pick">Use this ID</button>
+        </div>`
+      ).join("");
+      openTablesEl.querySelectorAll(".pick").forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.getAttribute("data-id");
+          tableIdInput.value = id;
+          document.getElementById("hostTableId").value = id; // convenience
+        };
+      });
+    });
+  </script>
+
+  <!-- 🧑‍✈️ Host wiring -->
+  <script type="module">
+    import { startRound, dealInitial, dealerTurn } from "./src/multiplayer/round.js";
+
+    const hostTableId = document.getElementById("hostTableId");
+    const roundId     = document.getElementById("roundId");
+
+    document.getElementById("btnStartRound")?.addEventListener("click", async () => {
+      if (!hostTableId.value) return alert("Enter Table ID");
+      const id = await startRound(hostTableId.value.trim());
+      roundId.value = id;
+      alert("Round started: " + id);
+    });
+
+    document.getElementById("btnDealInitial")?.addEventListener("click", async () => {
+      if (!hostTableId.value || !roundId.value) return alert("Need Table ID and Round ID");
+      await dealInitial(hostTableId.value.trim(), roundId.value.trim());
+      alert("Dealt initial cards.");
+    });
+
+    document.getElementById("btnDealerTurn")?.addEventListener("click", async () => {
+      if (!hostTableId.value || !roundId.value) return alert("Need Table ID and Round ID");
+      await dealerTurn(hostTableId.value.trim(), roundId.value.trim());
+      alert("Dealer played and settled.");
+    });
+  </script>
+
+  <!-- Buttons to trigger the Firestore test write -->
+  <button onclick="window.testSave()" style="margin:8px 0">Save TEST round</button>
+
+  <!-- Single-player game (kept as-is) -->
   <script type="module" src="./src/game.js"></script>
 </body>
 </html>
